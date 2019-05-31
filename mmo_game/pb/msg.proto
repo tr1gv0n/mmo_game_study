@@ -30,3 +30,12 @@ message Position{
 message Talk {
     string Content = 1;
 }
+//告知当前玩家 周边玩家位置信息
+message SyncPlayers{
+    repeated Player ps =1;
+}
+//其中一个玩家的信息
+message Player{
+    int32 Pid = 1;
+    Position P = 2;
+}

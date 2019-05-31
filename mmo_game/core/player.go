@@ -112,3 +112,39 @@ func (p *Player)SendTalkMsgToAll(content string)  {
 		player.SendMsg(200,proto_msg)
 	}
 }
+
+//得到当前玩家周围玩家
+func (p *Player)GetSurroundingPlayers() []*Player  {
+	pids := WorldMgrObj.AoiMgr.GetSurroundPIDsByPos(p.X,p.Z)
+	fmt.Println("Surrounding players = ",pids)
+	players := make([]*Player,0,len(pids))
+	for _,pid := range pids{
+		players = append(players,WorldMgrObj.GetPlayerByPid(int32(pid)))
+	}
+	return players
+}
+//将自己的消息同步给周围玩家
+func (p *Player)SyncSurrounding()  {
+	//获取当前玩家的周围九宫格的玩家
+	players := p.GetSurroundingPlayers()
+	//构建一个广播信息200，循环发送g
+	proto_msg := &pb.BroadCast{
+		Pid:p.Pid,
+		Tp:2,
+		Data:&pb.BroadCast_P{
+			P:&pb.Position{
+				X:p.X,
+				Y:p.Y,
+				Z:p.Z,
+				V:p.V,
+			},
+		},
+	}
+	//将当前玩家id和位置信息发送给周边玩家
+	for _,player := range players{
+		player.SendMsg(200,proto_msg)
+	}
+
+	//将其他玩家告诉当前玩家  （让当前玩家能够看见周边玩家的坐标）
+	//构建一个202消息  players的信息 告知当前玩家 p.send(202, ... )
+}

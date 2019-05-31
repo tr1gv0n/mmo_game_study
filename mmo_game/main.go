@@ -21,6 +21,8 @@ func OnConnectionAdd(conn ziface.IConnection)  {
 	core.WorldMgrObj.AddPlayer(p)
 	//给conn添加一个属性 pid属性
 	conn.SetProperty("pid",p.Pid)
+	//同步周边玩家
+	p.SyncSurrounding()
 
 	fmt.Println("---->player ID = ",p.Pid,"Online ...",",Player num=",len(core.WorldMgrObj.Players))
 }
