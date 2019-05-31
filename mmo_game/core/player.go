@@ -147,4 +147,72 @@ func (p *Player)SyncSurrounding()  {
 
 	//将其他玩家告诉当前玩家  （让当前玩家能够看见周边玩家的坐标）
 	//构建一个202消息  players的信息 告知当前玩家 p.send(202, ... )
+	//得到全部周边玩家的player集合message Player
+	players_proto_msg := make([]*pb.Player, 0, len(players))
+	for _, player := range players {
+		//制作一个message Player 消息
+		p_1 := &pb.Player{
+			Pid:player.Pid,
+			P:&pb.Position{
+				X:player.X,
+				Y:player.Y,
+				Z:player.Z,
+				V:player.V,
+			},
+		}
+
+		fmt.Println("pid = ", player.Pid,"position=",player)
+
+		players_proto_msg = append(players_proto_msg, p_1)
+	}
+	//创建一个 Message SyncPlayers
+	syncPlayers_proto_msg := &pb.SyncPlayers{
+		Ps: players_proto_msg[:],
+	}
+	//将当前的周边的全部的玩家信息 发送给当前的客户端
+	p.SendMsg(202,syncPlayers_proto_msg)
+}
+
+func (p *Player)UpdatePosition(x,y,z,v float32)  {
+	p.X=x
+	p.Y=y
+	p.Z=z
+	p.V=v
+
+	proto_msg := &pb.BroadCast{
+		Pid:p.Pid,
+		Tp:4,
+		Data:&pb.BroadCast_P{
+			P:&pb.Position{
+				X:p.X,
+				Y:p.Y,
+				Z:p.Z,
+				V:p.V,
+			},
+		},
+	}
+
+	players := p.GetSurroundingPlayers()
+
+	for _,player := range players{
+		player.SendMsg(200,proto_msg)
+	}
+}
+
+func (p *Player) OffLine()  {
+	//得到当前玩家的周边的玩家
+	players := p.GetSurroundingPlayers()
+
+	//制作一个消息MsgId:201
+	proto_msg := &pb.SyncPid{
+		Pid:p.Pid,
+	}
+	//给周边的玩家广播一个消息
+	for _,player := range players {
+		player.SendMsg(201,proto_msg)
+	}
+	//将该下线的玩家 从世界管理体验
+	WorldMgrObj.RemovePlayerByPid(p.Pid)
+	//将该下线玩家从地图AOIManager中移出
+	WorldMgrObj.AoiMgr.RemoveFromGridByPos(int(p.Pid),p.X,p.Z)
 }
