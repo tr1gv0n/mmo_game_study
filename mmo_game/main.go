@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"mmo_game/apis"
 	"mmo_game/core"
 	"zinx/ziface"
 	"zinx/znet"
@@ -18,6 +19,8 @@ func OnConnectionAdd(conn ziface.IConnection)  {
 	//上线成功了
 	//将玩家对象添加到世界管理器中
 	core.WorldMgrObj.AddPlayer(p)
+	//给conn添加一个属性 pid属性
+	conn.SetProperty("pid",p.Pid)
 
 	fmt.Println("---->player ID = ",p.Pid,"Online ...",",Player num=",len(core.WorldMgrObj.Players))
 }
@@ -26,6 +29,8 @@ func main()  {
 	s := znet.NewServer("MMO Game Server")
 	//注册一些 链接创建/销毁的 Hook钩子函数
 	s.AddOnConnStart(OnConnectionAdd)
+	//针对MsgID2 建立路由业务
+	s.AddRouter(2,&apis.WorldChat{})
 	//注册一些路由业务
 	s.Serve()
 }

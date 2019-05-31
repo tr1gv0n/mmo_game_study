@@ -25,3 +25,8 @@ message Position{
     float Z = 3;
     float V = 4;
 }
+
+//聊天数据（client 发送给server）
+message Talk {
+    string Content = 1;
+}

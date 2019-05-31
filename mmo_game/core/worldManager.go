@@ -66,7 +66,7 @@ func (wm *WorldManager)GetPlayerByPid(pid int32) *Player  {
 	return p
 }
 //获取全部的在线玩家集合
-func (wm *WorldManager)GetAllPlayer() []*Player  {
+func (wm *WorldManager)GetAllPlayers() []*Player  {
 	wm.pLock.RLock()
 	defer wm.pLock.RUnlock()
 

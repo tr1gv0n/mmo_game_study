@@ -82,3 +82,33 @@ func (p *Player)ReturnPlayerPosition()  {
 	//将这个消息 发送给客户端
 	p.SendMsg(200,proto_msg)
 }
+
+//将聊天数据广播给全部的在线玩家
+func (p *Player)SendTalkMsgToAll(content string)  {
+	/*
+		message BroadCast{
+		int32 Pid=1;
+		int32 Tp=2;
+		oneof Data {
+			string Content=3;
+			Position P=4;
+			int32 ActionData=5;
+		}
+	}
+	*/
+	//定义一个广播的proto消息数据类型
+	proto_msg := &pb.BroadCast{
+		Pid:p.Pid,
+		Tp:1,
+		Data:&pb.BroadCast_Content{
+			Content:content,
+		},
+	}
+	//获取全部的在线玩家
+	players := WorldMgrObj.GetAllPlayers()
+
+	//想全部的玩家进行广播proto_msg数据
+	for _,player := range players{
+		player.SendMsg(200,proto_msg)
+	}
+}
