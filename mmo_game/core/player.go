@@ -172,8 +172,113 @@ func (p *Player)SyncSurrounding()  {
 	//将当前的周边的全部的玩家信息 发送给当前的客户端
 	p.SendMsg(202,syncPlayers_proto_msg)
 }
+//格子切换的失业问题
+func (p *Player)OnExchangeAoiGrid(oldGrid,newGrid int)  {
+	//获取旧的九宫格成员
+	oldGrids := WorldMgrObj.AoiMgr.GetSurroundGridsByGid(oldGrid)
+	//旧的九宫格成员建立一个哈希表，用来快速查找
+	oldGridsMap := make(map[int] bool ,len(oldGrids))
+	for _,grid := range oldGrids {
+		oldGridsMap[grid.GID] = true
+	}
 
+	//获取新的九宫格成员
+	newGrids := WorldMgrObj.AoiMgr.GetSurroundGridsByGid(newGrid)
+	//将新的九宫格成员建立一个哈希表哦，用来快速查询
+	newGridsMap := make(map[int] bool,len(newGrids))
+	for _,grid := range newGrids {
+		newGridsMap[grid.GID] = true
+	}
+
+	/*---处理视野消失---*/
+	//构建一个MsgID:201
+	offline_msg := &pb.SyncPid{
+		Pid:p.Pid,
+	}
+	//找到在旧的九宫格出现，但是在新的九宫格没有出现的格子
+	leavingGrids := make([]*Grid,0)
+	for _,grid :=range oldGrids {
+		if _,ok := newGridsMap[grid.GID];!ok {
+			leavingGrids = append(leavingGrids,grid)
+		}
+	}
+	//获取leavingGrids的全部玩家
+	for _,grid := range leavingGrids {
+		players := WorldMgrObj.GetPlayerByGid(grid.GID)
+
+		for _, player := range players {
+			//让自己在其他的玩家客户端消失
+			player.SendMsg(201,offline_msg)
+			//将其他玩家信息 在自己的客户端中消失
+			another_offline_msg := &pb.SyncPid{
+				Pid:player.Pid,
+			}
+			p.SendMsg(201,another_offline_msg)
+		}
+	}
+
+	/*---处理视野出现--*/
+	online_msg := &pb.BroadCast{
+		Pid:p.Pid,
+		Tp:2,
+		Data:&pb.BroadCast_P{
+			P:&pb.Position{
+				X:p.X,
+				Y:p.Y,
+				Z:p.Z,
+				V:p.V,
+			},
+		},
+	}
+	//找到在新的九宫格出现的，但是没有在旧的九宫格出现的格子
+	enteringGrids := make([]*Grid,0)
+	for _,grid :=range newGrids{
+		if _,ok := oldGridsMap[grid.GID];!ok {
+			enteringGrids = append(enteringGrids,grid)
+		}
+	}
+		//得到需要显示视野的格子集合的全部玩家，分别进行发消息处理
+		for _,grid := range enteringGrids {
+			players := WorldMgrObj.GetPlayerByGid(grid.GID)
+
+			for _,player := range players {
+				//自己出现在其他人视野中
+				player.SendMsg(200,online_msg)
+
+				//让其他人出现在自己视野中
+				another_online_msg := &pb.BroadCast{
+					Pid:player.Pid,
+					Tp:2,
+					Data:&pb.BroadCast_P{
+						&pb.Position{
+							X:p.X,
+							Y:p.Y,
+							Z:p.Z,
+							V:p.V,
+						},
+					},
+				}
+				p.SendMsg(200,another_online_msg)
+			}
+		}
+}
+//更新广播当前玩家的最新位置
 func (p *Player)UpdatePosition(x,y,z,v float32)  {
+	//计算当前玩家是否跨越格子
+	//旧的格子ID
+	oldGrid := WorldMgrObj.AoiMgr.GetGidByPos(p.X,p.Z)
+	//新的格子ID
+	newGrid := WorldMgrObj.AoiMgr.GetGidByPos(x,z)
+
+	if oldGrid != newGrid{
+		 //触发格子切换
+		 //把pid从就得aoi格子中删除
+		 WorldMgrObj.AoiMgr.RemovePidFromGrid(int(p.Pid),oldGrid)
+		 //将pid添加到新的aoi格子中去
+		 WorldMgrObj.AoiMgr.ADDPidToGrid(int(p.Pid),newGrid)
+		 //视野消失的业务
+		 p.OnExchangeAoiGrid(oldGrid,newGrid)
+	}
 	p.X=x
 	p.Y=y
 	p.Z=z
